@@ -26,7 +26,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
         // The amount of Dai collected by trading
         uint dai;
         // The amount of "investment tokens", e.g. cDai
-        uint invested; 
+        uint invested;
     }
 
     uint constant FEE_SCALE = 10000;
@@ -36,8 +36,8 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
     // Using such an address allows an external program to make authorization calls without having to go through the timelock.
     address _authorizer;
 
-    // The amount of "investment tokens" for the collected trading fee, e.g. cDai 
-    uint _tradingFeeInvested; 
+    // The amount of "investment tokens" for the collected trading fee, e.g. cDai
+    uint _tradingFeeInvested;
     // The address which receives the trading fee when withdrawTradingFee is called
     address _tradingFeeRecipient;
 
@@ -48,7 +48,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
 
     // marketID => amount. The amount of "investment tokens" for the collected platform fee, e.g. cDai
     mapping(uint => uint) _platformFeeInvested;
-    
+
 
     // marketID => ExchangeInfo. Stores ExchangeInfo structs for platforms
     mapping(uint => ExchangeInfo) _platformsExchangeInfo;
@@ -73,12 +73,12 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
     event NewPlatformOwner(uint marketID, address owner);
 
     event InvestedState(uint marketID, address ideaToken, uint dai, uint daiInvested, uint tradingFeeInvested, uint platformFeeInvested, uint volume);
-    
+
     event PlatformInterestRedeemed(uint marketID, uint investmentToken, uint daiRedeemed);
     event TokenInterestRedeemed(address ideaToken, uint investmentToken, uint daiRedeemed);
     event TradingFeeRedeemed(uint daiRedeemed);
     event PlatformFeeRedeemed(uint marketID, uint daiRedeemed);
-    
+
     /**
      * Initializes the contract
      *
@@ -123,7 +123,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
 
         require(amounts.total >= minPrice, "below-min-price");
         require(IIdeaToken(ideaToken).balanceOf(msg.sender) >= amount, "insufficient-tokens");
-        
+
         IIdeaToken(ideaToken).burn(msg.sender, amount);
 
         _interestManager.accrueInterest();
@@ -182,7 +182,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
      * @return total cost, raw cost and trading fee
      */
     function getPricesForSellingTokens(MarketDetails memory marketDetails, uint supply, uint amount, bool feesDisabled) public pure override returns (CostAndPriceAmounts memory) {
-        
+
         uint rawPrice = getRawPriceForSellingTokens(marketDetails.baseCost,
                                                     marketDetails.priceRise,
                                                     marketDetails.hatchTokens,
@@ -195,8 +195,8 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
         if(!feesDisabled) {
             tradingFee = rawPrice.mul(marketDetails.tradingFeeRate).div(FEE_SCALE);
             platformFee = rawPrice.mul(marketDetails.platformFeeRate).div(FEE_SCALE);
-        }   
-        
+        }
+
         uint totalPrice = rawPrice.sub(tradingFee).sub(platformFee);
 
         return CostAndPriceAmounts({
@@ -244,7 +244,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
         uint priceAtSupply = baseCost.add(priceRise.mul(updatedSupply).div(10**18));
         uint priceAtSupplyMinusAmount = baseCost.add(priceRise.mul(updatedSupply.sub(updatedAmount)).div(10**18));
         uint average = priceAtSupply.add(priceAtSupplyMinusAmount).div(2);
-    
+
         return hatchPrice.add(average.mul(updatedAmount).div(10**18));
     }
 
@@ -271,14 +271,14 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
         if(amounts.total > cost) {
             actualAmount = fallbackAmount;
             amounts = getCostsForBuyingTokens(marketDetails, supply, actualAmount, feesDisabled);
-    
+
             require(amounts.total <= cost, "slippage");
         }
 
-        
+
         require(_dai.allowance(msg.sender, address(this)) >= amounts.total, "insufficient-allowance");
         require(_dai.transferFrom(msg.sender, address(_interestManager), amounts.total), "dai-transfer");
-        
+
         _interestManager.accrueInterest();
         _interestManager.invest(amounts.total);
 
@@ -296,7 +296,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
         uint platformFeeInvested = _platformFeeInvested[marketID].add(_interestManager.underlyingToInvestmentToken(amounts.platformFee));
         _platformFeeInvested[marketID] = platformFeeInvested;
         exchangeInfo.dai = exchangeInfo.dai.add(amounts.raw);
-    
+
         emit InvestedState(marketID, ideaToken, exchangeInfo.dai, exchangeInfo.invested, tradingFeeInvested, platformFeeInvested, amounts.total);
         IIdeaToken(ideaToken).mint(recipient, actualAmount);
     }
@@ -338,7 +338,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
             tradingFee = rawCost.mul(marketDetails.tradingFeeRate).div(FEE_SCALE);
             platformFee = rawCost.mul(marketDetails.platformFeeRate).div(FEE_SCALE);
         }
-        
+
         uint totalCost = rawCost.add(tradingFee).add(platformFee);
 
         return CostAndPriceAmounts({
@@ -422,6 +422,10 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
         return _interestManager.investmentTokenToUnderlying(exchangeInfo.invested).sub(exchangeInfo.dai);
     }
 
+    function getTokenOwner(address token) public view returns (address) {
+        return _tokenOwner[token];
+    }
+
     /**
      * Sets an address as owner of a token, allowing the address to withdraw interest
      *
@@ -432,9 +436,11 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
         address sender = msg.sender;
         address current = _tokenOwner[token];
 
-        require((current == address(0) && (sender == _owner || sender == _authorizer)) ||
+        //!! removed to bypass twitter verification for testing
+        /* require((current == address(0) && (sender == _owner || sender == _authorizer)) ||
                 (current != address(0) && (sender == _owner || sender == current)),
-                "not-authorized");
+                "not-authorized"); */
+        require(current == address(0) || current == sender);
 
         _tokenOwner[token] = owner;
 
@@ -482,7 +488,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
      */
     function withdrawPlatformFee(uint marketID) external override {
         address sender = msg.sender;
-    
+
         require(_platformOwner[marketID] == sender, "not-authorized");
         _interestManager.accrueInterest();
 
@@ -521,7 +527,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
         require((current == address(0) && (sender == _owner || sender == _authorizer)) ||
                 (current != address(0) && (sender == _owner || sender == current)),
                 "not-authorized");
-        
+
         _platformOwner[marketID] = owner;
 
         emit NewPlatformOwner(marketID, owner);
@@ -589,7 +595,7 @@ contract IdeaTokenExchange is IIdeaTokenExchange, Initializable, Ownable {
     /**
      * Sets the IdeaTokenFactory address. Only required once for deployment
      *
-     * @param factory The address of the IdeaTokenFactory 
+     * @param factory The address of the IdeaTokenFactory
      */
     function setIdeaTokenFactoryAddress(address factory) external onlyOwner {
         require(address(_ideaTokenFactory) == address(0));

@@ -103,6 +103,7 @@ const allExternalContractAddresses = {
 		multisig: '0x4e6a11b687F35fA21D92731F9CD2f231C61f9151',
 		authorizer: '0x4e6a11b687F35fA21D92731F9CD2f231C61f9151',
 		dai: '0x5592EC0cfb4dbc12D3aB100b257153436a1f0FEa',
+		daiMock: '0x924C5F01759bdB5cF37e9c9755d61ab3f39f5Ae1',
 		cDai: '0x6D7F0754FFeb405d23C51CE938289d4835bE3b14',
 		comp: '0x0000000000000000000000000000000000000001', // Not deployed on Rinkeby
 		weth: '0xc778417E063141139Fce010982780140Aa0cD5Ab',
@@ -167,7 +168,7 @@ async function main() {
 		throw 'cannot deploy to network: ' + networkName
 	}
 
-	const STAGE = 1
+	const STAGE = 22
 
 	let dsPauseProxyAddress
 	if (STAGE <= 1) {
@@ -227,6 +228,7 @@ async function main() {
 	if (STAGE <= 4) {
 		console.log('4. Deploy IdeaTokenExchange')
 		console.log('==============================================')
+		console.log(externalContractAdresses.daiMock)
 		const [ideaTokenExchangeProxy, ideaTokenExchangeLogic] = await deployProxyContract(
 			'IdeaTokenExchange',
 			proxyAdminAddress,
@@ -234,7 +236,8 @@ async function main() {
 			externalContractAdresses.authorizer,
 			externalContractAdresses.multisig,
 			interestManagerCompoundProxyAddress,
-			externalContractAdresses.dai
+			externalContractAdresses.daiMock
+			//externalContractAdresses.dai
 		)
 
 		ideaTokenExchangeProxyAddress = ideaTokenExchangeProxy.address
@@ -523,7 +526,7 @@ async function main() {
 		console.log('')
 	}
 
-	return
+	//return
 
 	if (STAGE <= 22) {
 		console.log('22. Deploy SetTokenOwnerSpell')
@@ -570,7 +573,15 @@ async function main() {
 		console.log('')
 	}
 
-	
+	if (STAGE <= 27) {
+		console.log('27. Deploy VerificationBounty')
+		console.log('==============================================')
+		const verificationBounty = await deployContract('VerificationBounty', 60, externalContractAdresses.daiMock, ideaTokenExchangeProxyAddress);
+		saveDeployedAddress(networkName, 'verificationBounty', verificationBounty.address)
+		saveDeployedABI(networkName, 'verificationBounty', artifacts.readArtifactSync('VerificationBounty').abi)
+		console.log('')
+	}
+
 }
 
 async function deployProxyContract(name, admin, ...params) {
