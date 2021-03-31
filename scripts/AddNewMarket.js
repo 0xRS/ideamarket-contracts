@@ -72,6 +72,7 @@ async function run() {
 		hatchTokens,
 		tradingFee,
 		platformFee,
+		false
 	])
 
 	console.log('')
