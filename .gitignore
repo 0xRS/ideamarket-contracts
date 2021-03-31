@@ -13,3 +13,4 @@ build
 
 # Dotenv
 .env
+.DS_Store
